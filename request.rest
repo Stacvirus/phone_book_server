@@ -1,0 +1,11 @@
+delete http://localhost:3001/api/persons/2
+###
+
+post http://localhost:3001/api/persons
+Content-Type: application/json
+
+{
+    "name": "Ada Lovelace",
+    "number": "39-44-5323523",
+    "id": 2
+}

@@ -1,6 +1,6 @@
 const express = require("express")
 const app = express()
-let notes = [
+let persons = [
     {
         "name": "Arto Hellas",
         "number": "040-123456",
@@ -27,10 +27,50 @@ app.get("/", (req, res) =>{
     res.send("<h1>hello world!</h1>")
 })
 
-app.get("/api/notes", (req, res) =>{
-    res.json(notes)
+app.get("/api/persons", (req, res) =>{
+    res.json(persons)
 })
 
-const port = 3001
-app.listen(port)
-console.log("server connected on port: "+ port)
+// access a specific element
+app.get("/api/persons/:id", (req, res) =>{
+    const id = req.params.id
+    const person = persons.find(per => per.id == id)
+    person && res.json(person)
+    !person && res.status(404).end()
+})
+
+//delete a specefic element
+app.delete("/api/persons/:id", (req, res) =>{
+    const id = req.params.id
+    const person = persons.find(per => per.id == id)
+    persons = persons.filter(per => per.id != id)
+    res.status(204).end()
+})
+
+//posting data to the server
+function genetateId(){
+    const maxId = persons.length > 0 ? Math.max(...persons.map(per => per.id)) : 0
+    return maxId + 1
+}
+app.use(express.json())
+app.post("/api/persons", (req, res) =>{
+    const input = req.body
+    if(!input.name || !input.number){
+        return res.status(204).json({error: "conent is missing"})
+    }
+    if(persons.map(per => per.name).includes(input.name)){
+        return res.status(204).json.apply({error: "person already exit"})
+    }
+    const person = {
+        id: genetateId(),
+        name: input.name,
+        number: input.number
+    }
+    persons = persons.concat(person)
+    res.json(input)
+})
+
+const port = process.env.PORT || 3001
+app.listen(port, () =>{
+    console.log("server connected on port: "+ port)
+})
