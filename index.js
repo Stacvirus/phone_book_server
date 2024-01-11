@@ -1,3 +1,6 @@
+// desabling cors policy by accepting all sources
+const cors = require("cors")
+ 
 const express = require("express")
 const app = express()
 let persons = [
@@ -22,6 +25,7 @@ let persons = [
         "id": 4
     }
 ]
+app.use(cors())
 
 app.get("/", (req, res) =>{
     res.send("<h1>hello world!</h1>")
@@ -69,6 +73,11 @@ app.post("/api/persons", (req, res) =>{
     persons = persons.concat(person)
     res.json(input)
 })
+
+const unknownEndpoint = (req, res) =>{
+    res.status(404).send({error: "unknwon endpoint"})
+}
+app.use(unknownEndpoint)
 
 const port = process.env.PORT || 3001
 app.listen(port, () =>{
