@@ -1,5 +1,5 @@
 // desabling cors policy by accepting all sources
-const cors = require("cors")
+//const cors = require("cors")
  
 const express = require("express")
 const app = express()
@@ -25,11 +25,16 @@ let persons = [
         "id": 4
     }
 ]
-app.use(cors())
+//app.use(cors())
 
-app.get("/", (req, res) =>{
-    res.send("<h1>hello world!</h1>")
-})
+
+// rendering the frontend on the server side (new init state)
+app.use(express.static("dist"))
+
+//initial state of the server
+// app.get("/", (req, res) =>{
+//     res.send("<h1>hello world!</h1>")
+// })
 
 app.get("/api/persons", (req, res) =>{
     res.json(persons)
