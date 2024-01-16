@@ -1,71 +1,35 @@
-// desabling cors policy by accepting all sources
-const cors = require("cors")
-
 const express = require("express")
 const app = express()
-let persons = [
-    {
-        "name": "Arto Hellas",
-        "number": "040-123456",
-        "id": 1
-    },
-    {
-        "name": "Ada Lovelace",
-        "number": "39-44-5323523",
-        "id": 2
-    },
-    {
-        "name": "Dan Abramov",
-        "number": "12-43-234345",
-        "id": 3
-    },
-    {
-        "name": "Mary Poppendieck",
-        "number": "39-23-6423122",
-        "id": 4
-    }
-]
-app.use(cors())
+const cors = require("cors")// desabling cors policy by accepting all sources
+require("dotenv").config()//to get all the enviroment vars in .env file
 
-// rendering the frontend on the server side (new init state)
-app.use(express.static("dist"))
-
-//initial state of the server
-// app.get("/", (req, res) =>{
-//     res.send("<h1>hello world!</h1>")
-// })
-
-//database initialisation
-const mongoose = require('mongoose')
 const Person = require("./models/person")
 
-if (process.argv.length < 3) {
-    console.log('give password as argument')
-    process.exit(1)
+//error handler function
+function errorHandler(error, req, res, next){
+    console.log(error.message)
+    if(error.name == "CastError"){
+        return res.status(400).send({error: "malformed id"})
+    } else if(error.name == "ValidationError"){
+        return res.status(400).json({error: error.message})
+    }
+    next(error)
 }
 
-const password = process.argv[2]
+const unknownEndpoint = (req, res) => {
+    res.status(404).send({ error: "unknwon endpoint" })
+}
 
-const url =
-    `mongodb+srv://parfaitandre5:${password}@phonebookv2.ztyamoo.mongodb.net/phoneBook`
-mongoose.set('strictQuery', false)
-mongoose.connect(url)
+app.use(express.static("dist"))// rendering the frontend on the server side (new init state)
+app.use(express.json())//for posting data with json-parser
+app.use(cors())//enable all connecting sources
 
-const personSchema = new mongoose.Schema({
-    name: String,
-    number: String,
+//infos route
+app.get('/api/info', (req, res) =>{
+    res.send(`<h2>there are ${Person.length} contacts in the phone book </h2> <br> <p> ${new Date()} </p>`)
 })
 
-personSchema.set("toJSON", {
-    transform: (document, returnedObject) =>{
-        returnedObject.id = returnedObject._id.toString()
-        delete returnedObject._id
-        delete returnedObject.__v
-    }
-})
-
-const Person = mongoose.model('Person', personSchema)
-
+//persons route
 app.get("/api/persons", (req, res) => {
     Person.find({}).then(per =>{
         res.json(per)
@@ -74,50 +38,60 @@ app.get("/api/persons", (req, res) => {
 })
 
 // access a specific element
-app.get("/api/persons/:id", (req, res) => {
-    const id = req.params.id
-    const person = persons.find(per => per.id == id)
-    person && res.json(person)
-    !person && res.status(404).end()
+app.get("/api/persons/:id", (req, res, next) => {
+    Person.findById(req.params.id)
+        .then(per =>{
+            if(per) res.json(per)
+            else res.status(404).end()
+        })
+        .catch(error => next(error))
 })
 
 //delete a specefic element
-app.delete("/api/persons/:id", (req, res) => {
+app.delete("/api/persons/:id", (req, res, next) => {
     const id = req.params.id
-    const person = persons.find(per => per.id == id)
-    persons = persons.filter(per => per.id != id)
-    res.status(204).end()
+    Person.findByIdAndDelete(id)
+        .then(result =>{
+            res.status(204).end()
+        })
+        .catch(error => next(error))
 })
 
-//posting data to the server
-function genetateId() {
-    const maxId = persons.length > 0 ? Math.max(...persons.map(per => per.id)) : 0
-    return maxId + 1
-}
-app.use(express.json())
-app.post("/api/persons", (req, res) => {
+//posting data
+app.post("/api/persons", (req, res, next) => {
     const input = req.body
-    if (!input.name || !input.number) {
-        return res.status(204).json({ error: "conent is missing" })
-    }
-    if (persons.map(per => per.name).includes(input.name)) {
-        return res.status(204).json.apply({ error: "person already exit" })
-    }
-    const person = {
-        id: genetateId(),
+    const person = new Person({
         name: input.name,
         number: input.number
-    }
-    persons = persons.concat(person)
-    res.json(input)
+    })
+
+    person.save()
+        .then(savePer =>{
+            res.json(savePer)
+        })
+        .catch(error => next(error))
 })
 
-const unknownEndpoint = (req, res) => {
-    res.status(404).send({ error: "unknwon endpoint" })
-}
-app.use(unknownEndpoint)
+//updating data info in DB
+app.put("/api/persons/:id", (req, res, next) =>{
+    const id = req.params.id
+    const per = {
+        name: req.body.name,
+        number: req.body.number,
+    }
+    Person.findByIdAndUpdate(id, 
+        per, 
+        {new: true, runValidators: true, context: "query"})
+        .then(result => {
+            res.json(result)
+        })
+        .catch(error => next(error))
+})
 
-const port = process.env.PORT || 3001
+app.use(unknownEndpoint)
+app.use(errorHandler)
+
+const port = process.env.PORT
 app.listen(port, () => {
     console.log("server connected on port: " + port)
 })

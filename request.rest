@@ -9,3 +9,11 @@ Content-Type: application/json
     "number": "39-44-5323523",
     "id": 2
 }
+###
+put http://localhost:3001/api/persons
+Content-Type: application/json
+
+{
+    "name": "Stac Virus",
+    "number": "456813765",
+}
